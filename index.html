@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vecinos La Tradición — Francisco Alvarez</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --verde: #1D9E75;
+    --azul: #378ADD;
+    --naranja: #D85A30;
+    --rosa: #C94B7B;
+    --ambar: #BA7517;
+    --gris: #7a7a78;
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.1);
+    --text: #1a1a18;
+    --text-muted: #6b6b68;
+    --radius: 10px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  header p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .badge {
+    display: inline-block;
+    background: #eef9f4;
+    color: var(--verde);
+    border: 1px solid #c0e8d6;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 61px);
+  }
+
+  /* MAPA */
+  #mapa-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #e8e4dc;
+    background-image:
+      linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  #mapa-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .calle-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    fill: #555;
+    font-weight: 500;
+  }
+
+  .calle-label-vert {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    fill: #666;
+    font-weight: 500;
+  }
+
+  .marker-group { cursor: pointer; }
+  .marker-group circle { transition: r 0.15s, filter 0.15s; }
+  .marker-group:hover circle { filter: brightness(1.15); }
+  .marker-group text { pointer-events: none; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; fill: white; text-anchor: middle; dominant-baseline: central; }
+
+  /* PANEL */
+  #panel {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.25s ease;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+
+  #panel.open { width: 300px; }
+
+  #panel-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  #panel-calle {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  #panel-num {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  #panel-count {
+    font-size: 11px;
+    background: #f0f0ee;
+    color: var(--text-muted);
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  #close-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: -2px;
+  }
+
+  #close-btn:hover { background: #f0f0ee; }
+
+  #panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .vecino-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: #fafaf8;
+    transition: border-color 0.15s;
+  }
+
+  .vecino-card:hover { border-color: rgba(0,0,0,0.2); }
+
+  .v-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+    margin-bottom: 8px;
+  }
+
+  .v-nombre {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .v-tel {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 4px;
+  }
+
+  .v-tel a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .v-tel a:hover { color: var(--verde); }
+
+  .v-nota {
+    font-size: 11px;
+    color: #999;
+    margin-top: 5px;
+    font-style: italic;
+    border-top: 1px solid #eee;
+    padding-top: 5px;
+    line-height: 1.4;
+  }
+
+  /* LEYENDA */
+  #leyenda {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    backdrop-filter: blur(4px);
+  }
+
+  .ley-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    color: #444;
+  }
+
+  .ley-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* TOTAL */
+  #total-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-muted);
+    backdrop-filter: blur(4px);
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: absolute;
+    background: rgba(20,20,18,0.88);
+    color: #fff;
+    font-size: 11px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    pointer-events: none;
+    display: none;
+    white-space: nowrap;
+    z-index: 10;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  @media (max-width: 600px) {
+    .layout { flex-direction: column; height: auto; }
+    #mapa-wrap { height: 55vh; }
+    #panel.open { width: 100%; height: 45vh; }
+    #leyenda { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Vecinos La Tradición <span class="badge">Francisco Alvarez</span></h1>
+    <p>Toca cada punto del mapa para ver los contactos de esa cuadra</p>
+  </div>
+</header>
+
+<div class="layout">
+  <div id="mapa-wrap">
+    <div id="total-badge">— vecinos cargados</div>
+    <div id="tooltip"></div>
+
+    <svg id="mapa-svg" viewBox="0 0 720 600" preserveAspectRatio="xMidYMid meet">
+
+      <!-- Calles horizontales -->
+      <rect x="0" y="145" width="720" height="10" rx="2" fill="#c8c0b0"/>
+      <text x="14" y="140" class="calle-label">Los Tulipaneros</text>
+
+      <rect x="0" y="300" width="720" height="10" rx="2" fill="#b8d4b0"/>
+      <text x="14" y="295" class="calle-label">Los Olmos</text>
+
+      <rect x="0" y="450" width="720" height="10" rx="2" fill="#d4b898"/>
+      <text x="14" y="445" class="calle-label">Los Aromos</text>
+
+      <!-- Calles verticales -->
+      <rect x="50" y="0" width="8" height="600" rx="2" fill="#c4baa8"/>
+      <text transform="rotate(-90,30,300)" x="-380" y="35" class="calle-label-vert">Los Fresnos</text>
+
+      <rect x="120" y="0" width="8" height="600" rx="2" fill="#bdb0c8"/>
+      <text transform="rotate(-90,100,300)" x="-420" y="105" class="calle-label-vert">Sánchez de Bustamante</text>
+
+      <rect x="680" y="0" width="8" height="600" rx="2" fill="#c0c8b0"/>
+      <text transform="rotate(-90,668,300)" x="-380" y="665" class="calle-label-vert">Los Abedules</text>
+
+      <!-- Manzanas -->
+      <rect x="135" y="30" width="230" height="105" rx="5" fill="rgba(255,255,255,0.35)" stroke="rgba(0,0,0,0.07)" stroke-width="1"/>
+      <rect x="385" y="30" width="280" height="105" rx="5" fill="rgba(255,255,255,0.35)" stroke="rgba(0,0,0,0.07)" stroke-width="1"/>
+      <rect x="135" y="165" width="230" height="120" rx="5" fill="rgba(255,255,255,0.35)" stroke="rgba(0,0,0,0.07)" stroke-width="1"/>
+      <rect x="385" y="165" width="280" height="120" rx="5" fill="rgba(255,255,255,0.35)" stroke="rgba(0,0,0,0.07)" stroke-width="1"/>
+      <rect x="135" y="320" width="230" height="115" rx="5" fill="rgba(255,255,255,0.35)" stroke="rgba(0,0,0,0.07)" stroke-width="1"/>
+      <rect x="385" y="320" width="280" height="115" rx="5" fill="rgba(255,255,255,0.35)" stroke="rgba(0,0,0,0.07)" stroke-width="1"/>
+      <rect x="135" y="465" width="530" height="115" rx="5" fill="rgba(255,255,255,0.35)" stroke="rgba(0,0,0,0.07)" stroke-width="1"/>
+
+      <g id="markers-layer"></g>
+    </svg>
+
+    <div id="leyenda">
+      <div class="ley-item"><div class="ley-dot" style="background:#1D9E75"></div>Los Olmos</div>
+      <div class="ley-item"><div class="ley-dot" style="background:#378ADD"></div>Los Tulipaneros</div>
+      <div class="ley-item"><div class="ley-dot" style="background:#D85A30"></div>Los Aromos</div>
+      <div class="ley-item"><div class="ley-dot" style="background:#C94B7B"></div>Sánchez de Bustamante</div>
+      <div class="ley-item"><div class="ley-dot" style="background:#BA7517"></div>Los Fresnos</div>
+      <div class="ley-item"><div class="ley-dot" style="background:#7a7a78"></div>Otros</div>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div id="panel-header">
+      <div>
+        <div id="panel-calle"></div>
+        <div id="panel-num"></div>
+        <div id="panel-count" style="margin-top:6px"></div>
+      </div>
+      <button id="close-btn" onclick="closePanel()">✕</button>
+    </div>
+    <div id="panel-body"></div>
+  </div>
+</div>
+
+<script>
+const VECINOS = [
+  {nombre:"Alberto Alfonso", tel:"+54 9 11 6885-1139", dir:"Los Tulipaneros 1829", nota:"Vecino de Alvarez"},
+  {nombre:"Alejandro Cittadino", tel:"+54 9 11 6791-3959", dir:"Los Olmos 694", nota:""},
+  {nombre:"Andres Ameigeiras", tel:"+54 9 11 6568-4546", dir:"Los Abedules 1862", nota:""},
+  {nombre:"Angie Esposa de Leandro", tel:"+54 9 11 5369-4140", dir:"Sánchez de Bustamante 1980", nota:""},
+  {nombre:"Ariel", tel:"+54 9 11 5383-0407", dir:"Los Aromos 543", nota:""},
+  {nombre:"Beatriz Boglione", tel:"+54 9 11 2579-5901", dir:"Los Olmos 459", nota:"Olmos 459"},
+  {nombre:"Biby Esposa de Eduardo", tel:"+54 9 11 6374 5282", dir:"Sánchez de Bustamante 1930", nota:""},
+  {nombre:"Cesar Tano Bravi", tel:"+491727837562", dir:"Los Olmos 456", nota:"Esposo de Ivonne"},
+  {nombre:"Ivonne Bravi", tel:"+54 9 11 4404-6738", dir:"Los Olmos 456", nota:"Esposa de Cesar Tano"},
+  {nombre:"Christian Goitea y Melina", tel:"+54 9 11 3390-2075", dir:"Los Olmos 494", nota:""},
+  {nombre:"Clara y Nestor", tel:"+54 9 11 3061-3880", dir:"Los Olmos 516", nota:""},
+  {nombre:"Nestor Horacio Marzano", tel:"+54 9 11 5473-1885", dir:"Los Olmos 516", nota:"Esposo de Clara – Papa Noel"},
+  {nombre:"Coty Maria del Pilar Burgos", tel:"+54 9 11 6743-1358", dir:"Esq. Los Olmos / Los Tulipaneros", nota:"Esposa de Leo"},
+  {nombre:"esposo de Coty (Leo)", tel:"+54 9 11 4939 6803", dir:"Esq. Los Olmos / Los Tulipaneros", nota:""},
+  {nombre:"Daniel", tel:"+54 9 11 4994-9085", dir:"Los Tulipaneros 1775", nota:""},
+  {nombre:"Daniela Galasso", tel:"+54 9 11 4416 5774", dir:"Sin dirección", nota:""},
+  {nombre:"Deymar Perez", tel:"+54 9 11 2795-3897", dir:"Sánchez de Bustamante 1888", nota:""},
+  {nombre:"Diego Martinez", tel:"+54 9 11 6214 9667", dir:"Sin dirección", nota:"Vecino Alvarez"},
+  {nombre:"Eduardo", tel:"+54 9 11 3916-4237", dir:"Sánchez de Bustamante 1930", nota:"Bustamante 1930"},
+  {nombre:"Eli", tel:"+54 9 341 326-4624", dir:"Los Tulipaneros (esquina)", nota:"Vecina nueva, Dpto de arriba"},
+  {nombre:"Elisa Marzano", tel:"+54 9 11 5471-0328", dir:"Los Olmos 410", nota:"Nuera de Clara"},
+  {nombre:"Emilse y Alejandro", tel:"+54 9 11 2837 0574", dir:"Los Olmos 629", nota:""},
+  {nombre:"Erica Azzato", tel:"+54 9 11 3448-5351", dir:"Los Tulipaneros 1880", nota:""},
+  {nombre:"Fabiana Garrido", tel:"+54 9 11 6370-1824", dir:"Los Fresnos 1866", nota:"Ex esposa de Juan"},
+  {nombre:"Juan Ithurbide", tel:"+54 9 11 2739-2282", dir:"Los Fresnos 1866", nota:""},
+  {nombre:"Fefi Hija de Marcela", tel:"+54 9 11 2797-7586", dir:"Los Olmos 533", nota:"La Tradicion VECINOS"},
+  {nombre:"Giselle gigi Espindola", tel:"+54 9 11 6693 1504", dir:"Los Olmos 533", nota:""},
+  {nombre:"Marcela Mama de Fefi y Gigi", tel:"+54 9 11 5883 6310", dir:"Los Olmos 533", nota:""},
+  {nombre:"Gimena Maria Scapula", tel:"+54 9 11 6141 8161", dir:"Los Tulipaneros 1861", nota:""},
+  {nombre:"Javier", tel:"+54 9 11 6000 1409", dir:"Los Tulipaneros 1861", nota:""},
+  {nombre:"Graciela Baroni", tel:"+54 9 11 6493-2351", dir:"Los Aromos 475", nota:""},
+  {nombre:"Viviana Avellaneda", tel:"+54 9 11 3587-0124", dir:"Los Aromos 475", nota:"Hija de Graciela"},
+  {nombre:"Guido Ezequiel Braham", tel:"+5491164632024", dir:"Sánchez de Bustamante 1888", nota:"Portón negro entre Olmos y Aromos"},
+  {nombre:"Hernan Vivi", tel:"+54 9 11 5936-7427", dir:"Los Aromos 630", nota:""},
+  {nombre:"Horacio Antich y Silvina", tel:"+54 9 11 3951-7498", dir:"Los Olmos 476", nota:""},
+  {nombre:"Jhonatan", tel:"+54 9 11 3069 7731", dir:"Los Tulipaneros 1868", nota:"Tulipaneros 1868/1884"},
+  {nombre:"Jorge Luis Liguori", tel:"+54 9 11 6504-7150", dir:"Los Olmos 473", nota:""},
+  {nombre:"Mabel Esposa de Luis Liguori", tel:"+54 9 11 5604-9397", dir:"Los Olmos 473", nota:""},
+  {nombre:"Jose Gerardo", tel:"+54 9 11 6169 7855", dir:"Los Olmos 462", nota:""},
+  {nombre:"Valeria De La Quintana", tel:"+54 9 11 6181-3914", dir:"Los Olmos 462", nota:"Esposa de Jose Gerardo"},
+  {nombre:"Juampi", tel:"+54 9 11 3006-7648", dir:"Los Fresnos 1858", nota:"Al lado de Pelufo. Juan Pablo y Estefanía"},
+  {nombre:"Leandro Esposo de Angie", tel:"+54 9 11 6844-7734", dir:"Sánchez de Bustamante 1980", nota:""},
+  {nombre:"Leo Arriyaga", tel:"+54 9 11 3606-6623", dir:"Sin dirección", nota:""},
+  {nombre:"Leonardo Salas y Raquel", tel:"+54 9 11 6882-8733", dir:"Los Olmos 441", nota:""},
+  {nombre:"Lorena Cinalli y Jorge", tel:"+54 9 11 5622-5645", dir:"Los Olmos 429", nota:""},
+  {nombre:"Lucas Devecchi", tel:"+54 9 11 5695 7899", dir:"Los Tulipaneros 1833", nota:"Familia vive ahí"},
+  {nombre:"Mariela y Javier", tel:"+54 9 11 6412-3039", dir:"Los Fresnos 1863", nota:""},
+  {nombre:"Melina Ferrari", tel:"+54 9 11 6112-5358", dir:"Los Tulipaneros (esquina)", nota:"Vecina de Tulipaneros"},
+  {nombre:"Nahuel y Tatiana", tel:"+54 9 11 3130-6048", dir:"Los Aromos 561", nota:""},
+  {nombre:"Nelida Valdez (Nelly)", tel:"+54 9 11 5817-3644", dir:"Los Tulipaneros 1854", nota:""},
+  {nombre:"Norma Vecina Alvarez", tel:"+54 9 11 6974-9556", dir:"Los Fresnos 1763", nota:"Entre Los Olmos y La Prensa"},
+  {nombre:"Pablo", tel:"+54 9 11 7004-8752", dir:"Los Fresnos 1922", nota:""},
+  {nombre:"Pablo Rossi", tel:"+54 9 11 6168-7502", dir:"Diario La Prensa 456", nota:""},
+  {nombre:"Pelu Maria Luisa Acuña", tel:"+54 9 11 6506 7076", dir:"Los Tulipaneros 1862", nota:"Alarmas Orion - Javier Arce"},
+  {nombre:"Rodrigo esposo de Soledad", tel:"+54 9 11 3537-9892", dir:"Los Fresnos 1786", nota:""},
+  {nombre:"Soledad Gistaro", tel:"+54 9 11 6096 4224", dir:"Los Fresnos 1786", nota:"Esposa de Rodrigo"},
+  {nombre:"Rodrigo Pelu Sobrino", tel:"+54 9 11 2625 5163", dir:"Sin dirección", nota:"Sobrino de Pelu"},
+  {nombre:"Silvia Galazo", tel:"+54 9 11 5982 0121", dir:"Los Olmos 560", nota:"Silvia Rita Codsi"},
+  {nombre:"Soledad", tel:"+54 9 11 6616-7979", dir:"Los Aromos 568", nota:""},
+  {nombre:"Sonia", tel:"+54 9 11 6955 5211", dir:"Los Olmos 557", nota:"Vecina de los tulipaneros"},
+  {nombre:"Susana Bianco", tel:"+54 9 11 6807-1973", dir:"Los Fresnos 1778", nota:""},
+  {nombre:"Susana y Beto", tel:"+54 9 11 3672-5960", dir:"Los Olmos 448", nota:"Al lado de Valeria"},
+];
+
+document.getElementById('total-badge').textContent = VECINOS.length + ' vecinos cargados';
+
+function initiales(nombre) {
+  const parts = nombre.trim().split(' ');
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return parts[0].substring(0,2).toUpperCase();
+}
+
+// Agrupar por dirección
+const grupos = {};
+VECINOS.forEach(v => {
+  if (!grupos[v.dir]) grupos[v.dir] = [];
+  grupos[v.dir].push(v);
+});
+
+// Mapa dirección → posición SVG
+const POSICIONES = {
+  // Los Olmos (y=304, numeración de izq a der: menor número más a la izquierda)
+  "Los Olmos 410":   {x:170, y:304, c:"#1D9E75"},
+  "Los Olmos 429":   {x:215, y:304, c:"#1D9E75"},
+  "Los Olmos 441":   {x:255, y:304, c:"#1D9E75"},
+  "Los Olmos 448":   {x:290, y:304, c:"#1D9E75"},
+  "Los Olmos 456":   {x:325, y:304, c:"#1D9E75"},
+  "Los Olmos 459":   {x:355, y:304, c:"#1D9E75"},
+  "Los Olmos 462":   {x:385, y:304, c:"#1D9E75"},
+  "Los Olmos 473":   {x:415, y:304, c:"#1D9E75"},
+  "Los Olmos 476":   {x:445, y:304, c:"#1D9E75"},
+  "Los Olmos 494":   {x:475, y:304, c:"#1D9E75"},
+  "Los Olmos 516":   {x:505, y:304, c:"#1D9E75"},
+  "Los Olmos 533":   {x:535, y:304, c:"#1D9E75"},
+  "Los Olmos 557":   {x:560, y:304, c:"#1D9E75"},
+  "Los Olmos 560":   {x:585, y:304, c:"#1D9E75"},
+  "Los Olmos 629":   {x:620, y:304, c:"#1D9E75"},
+  "Los Olmos 694":   {x:660, y:304, c:"#1D9E75"},
+  // Los Tulipaneros (y=150)
+  "Los Tulipaneros 1775":{x:165, y:150, c:"#378ADD"},
+  "Los Tulipaneros 1829":{x:230, y:150, c:"#378ADD"},
+  "Los Tulipaneros 1833":{x:270, y:150, c:"#378ADD"},
+  "Los Tulipaneros 1854":{x:320, y:150, c:"#378ADD"},
+  "Los Tulipaneros 1861":{x:365, y:150, c:"#378ADD"},
+  "Los Tulipaneros 1862":{x:400, y:150, c:"#378ADD"},
+  "Los Tulipaneros 1868":{x:440, y:150, c:"#378ADD"},
+  "Los Tulipaneros 1880":{x:490, y:150, c:"#378ADD"},
+  "Los Tulipaneros (esquina)":{x:540, y:150, c:"#378ADD"},
+  "Esq. Los Olmos / Los Tulipaneros":{x:170, y:230, c:"#378ADD"},
+  // Los Aromos (y=454)
+  "Los Aromos 475":  {x:200, y:454, c:"#D85A30"},
+  "Los Aromos 543":  {x:310, y:454, c:"#D85A30"},
+  "Los Aromos 561":  {x:390, y:454, c:"#D85A30"},
+  "Los Aromos 568":  {x:440, y:454, c:"#D85A30"},
+  "Los Aromos 630":  {x:520, y:454, c:"#D85A30"},
+  // Sánchez de Bustamante (x=124)
+  "Sánchez de Bustamante 1888":{x:124, y:454, c:"#C94B7B"},
+  "Sánchez de Bustamante 1930":{x:124, y:380, c:"#C94B7B"},
+  "Sánchez de Bustamante 1980":{x:124, y:270, c:"#C94B7B"},
+  // Los Fresnos (x=54)
+  "Los Fresnos 1763":{x:54, y:530, c:"#BA7517"},
+  "Los Fresnos 1778":{x:54, y:490, c:"#BA7517"},
+  "Los Fresnos 1786":{x:54, y:450, c:"#BA7517"},
+  "Los Fresnos 1858":{x:54, y:380, c:"#BA7517"},
+  "Los Fresnos 1863":{x:54, y:340, c:"#BA7517"},
+  "Los Fresnos 1866":{x:54, y:300, c:"#BA7517"},
+  "Los Fresnos 1922":{x:54, y:250, c:"#BA7517"},
+  // Otros
+  "Los Abedules 1862":{x:680, y:200, c:"#7a7a78"},
+  "Diario La Prensa 456":{x:54, y:80, c:"#7a7a78"},
+  "Sin dirección":   {x:680, y:540, c:"#7a7a78"},
+};
+
+const svg = document.getElementById('markers-layer');
+const tooltip = document.getElementById('tooltip');
+const mapa = document.getElementById('mapa-wrap');
+
+Object.entries(grupos).forEach(([dir, vecs]) => {
+  const pos = POSICIONES[dir];
+  if (!pos) return;
+
+  const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+  g.setAttribute("class","marker-group");
+
+  const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  c.setAttribute("cx", pos.x);
+  c.setAttribute("cy", pos.y);
+  c.setAttribute("r", vecs.length > 1 ? 13 : 10);
+  c.setAttribute("fill", pos.c);
+  c.setAttribute("stroke","white");
+  c.setAttribute("stroke-width","2");
+
+  const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+  t.setAttribute("x", pos.x);
+  t.setAttribute("y", pos.y);
+  t.textContent = vecs.length;
+
+  g.appendChild(c);
+  g.appendChild(t);
+
+  g.addEventListener("click", () => showPanel(dir, vecs, pos.c));
+
+  g.addEventListener("mousemove", (e) => {
+    const rect = mapa.getBoundingClientRect();
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX - rect.left + 10) + 'px';
+    tooltip.style.top = (e.clientY - rect.top - 30) + 'px';
+    tooltip.textContent = dir + ' (' + vecs.length + ' vecino' + (vecs.length>1?'s':'') + ')';
+  });
+
+  g.addEventListener("mouseleave", () => { tooltip.style.display = 'none'; });
+
+  svg.appendChild(g);
+});
+
+const COLORES_AVATAR = ["#1D9E75","#378ADD","#D85A30","#C94B7B","#BA7517","#7F77DD","#885A3A"];
+let colorIdx = 0;
+
+function showPanel(dir, vecs, color) {
+  const panel = document.getElementById('panel');
+  panel.classList.add('open');
+  document.getElementById('panel-calle').textContent = dir;
+  document.getElementById('panel-num').textContent = '';
+  document.getElementById('panel-count').textContent = vecs.length + ' vecino' + (vecs.length>1?'s':'');
+  document.getElementById('panel-calle').style.color = color;
+
+  const body = document.getElementById('panel-body');
+  body.innerHTML = '';
+
+  vecs.forEach((v, i) => {
+    const card = document.createElement('div');
+    card.className = 'vecino-card';
+
+    const av = document.createElement('div');
+    av.className = 'v-avatar';
+    av.style.background = COLORES_AVATAR[i % COLORES_AVATAR.length];
+    av.textContent = initiales(v.nombre);
+
+    const nombre = document.createElement('div');
+    nombre.className = 'v-nombre';
+    nombre.textContent = v.nombre;
+
+    // Limpiar número y formatear
+    const telClean = v.tel.replace(/\s+/g,'');
+    const telDiv = document.createElement('div');
+    telDiv.className = 'v-tel';
+    const telLink = document.createElement('a');
+    telLink.href = 'tel:' + telClean;
+    telLink.textContent = v.tel;
+    telDiv.appendChild(telLink);
+
+    // WhatsApp link
+    const waNum = telClean.replace(/\+/,'').replace(/-/g,'');
+    const waLink = document.createElement('a');
+    waLink.href = 'https://wa.me/' + waNum;
+    waLink.target = '_blank';
+    waLink.style.cssText = 'margin-left:8px;font-size:11px;color:#25D366;font-weight:500;text-decoration:none;';
+    waLink.textContent = 'WA';
+    telDiv.appendChild(waLink);
+
+    card.appendChild(av);
+    card.appendChild(nombre);
+    card.appendChild(telDiv);
+
+    if (v.nota) {
+      const nota = document.createElement('div');
+      nota.className = 'v-nota';
+      nota.textContent = v.nota;
+      card.appendChild(nota);
+    }
+
+    body.appendChild(card);
+  });
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+}
+</script>
+</body>
+</html>
